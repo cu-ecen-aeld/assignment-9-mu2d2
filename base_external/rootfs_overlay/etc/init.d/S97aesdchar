@@ -1,0 +1,43 @@
+#!/bin/sh
+# S97aesdchar - Load/unload aesdchar kernel module
+# This script is intended to be run at startup by Buildroot's init system.
+
+MODULES_DIR=/lib/modules/$(uname -r)/extra
+MODULE=aesdchar.ko 
+DEVICE=aesdchar
+MODE="664"
+GROUP="staff"
+
+start() {
+    printf "Loading aesdchar: "
+    insmod ${MODULES_DIR}/${MODULE} || { echo "FAILED"; exit 1; }
+
+    MAJOR=$(awk "\$2==\"aesdchar\" {print \$1}" /proc/devices)
+    rm -f /dev/${DEVICE}
+    mknod /dev/${DEVICE} c $MAJOR 0
+    chgrp $GROUP /dev/${DEVICE}
+    chmod $MODE /dev/${DEVICE}
+    echo "OK"
+}
+
+stop() {
+    printf "Unloading aesdchar: "
+    rmmod aesdchar && echo "OK" || echo "FAILED"
+    rm -f /dev/${DEVICE}
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    restart)
+        stop
+        start
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+esac
